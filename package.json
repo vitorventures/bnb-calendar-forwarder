@@ -1,0 +1,16 @@
+{
+  "name": "bnb-calendar-forwarder",
+  "version": "1.0.0",
+  "description": "Forwards Lodgify reservation checkout dates to a WhatsApp group",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "node-ical": "^0.19.0",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.26.0"
+  }
+}
