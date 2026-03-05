@@ -46,16 +46,13 @@ async function sendOrUpdateMessage(client, groupName, text) {
     throw new Error(`WhatsApp group not found: "${groupName}"`);
   }
 
-  // Unpin the old tracked message if it still exists
-  if (state.messageId && state.chatId) {
-    try {
-      const oldChat = await client.getChatById(state.chatId);
-      const oldMessages = await oldChat.fetchMessages({ limit: 100 });
-      const oldMsg = oldMessages.find((m) => m.id._serialized === state.messageId);
-      if (oldMsg) await oldMsg.unpin();
-    } catch (err) {
-      console.warn('Could not unpin old message:', err.message);
-    }
+  // Unpin all currently pinned messages in the group
+  try {
+    const pinned = await client.getPinnedMessages(group.id._serialized);
+    await Promise.all(pinned.map((m) => m.unpin().catch(() => {})));
+    if (pinned.length) console.log(`Unpinned ${pinned.length} existing message(s).`);
+  } catch (err) {
+    console.warn('Could not unpin existing messages:', err.message);
   }
 
   const sent = await group.sendMessage(text);
