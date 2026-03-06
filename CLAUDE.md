@@ -57,8 +57,10 @@ sudo apt-get install -y libnspr4 libnss3 libgbm1 libxss1 libasound2 libcairo2 li
 
 ## Behaviour Notes
 
-- On each cron run, the bot **edits** the existing message (no new message spam)
+- On each cron run, the bot compares new checkouts against the last known ones (stored in `state.json`)
+- **No changes**: skips silently — no edit, no message
+- **Changes detected**: edits the pinned message (updating the `Updated:` date) and drops a short unpinned notification in the chat listing what was added/removed
 - When the tracked message is gone, it sends a new one, unpins all currently pinned messages, and pins the new one for 30 days
 - Pinning requires the WhatsApp account to be a **group admin**
-- `state.json` (gitignored) tracks the last sent `messageId` + `chatId`
+- `state.json` (gitignored) tracks the last sent `messageId`, `chatId`, and `checkouts` (for change detection)
 - WhatsApp session tied to the phone — phone must stay connected to the internet
