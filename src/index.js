@@ -46,7 +46,7 @@ async function runUpdate() {
     console.log('Fetching calendar...');
     const checkouts = await getUpcomingCheckouts(ICAL_URL, parseInt(LOOKAHEAD_DAYS, 10));
     const message = formatCleaningSchedule(checkouts);
-    await sendOrUpdateMessage(client, WHATSAPP_GROUP_NAME, message);
+    await sendOrUpdateMessage(client, WHATSAPP_GROUP_NAME, message, checkouts);
   } catch (err) {
     console.error('Error during update:', err.message);
   }

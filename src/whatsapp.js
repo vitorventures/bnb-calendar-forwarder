@@ -16,8 +16,35 @@ function saveState(state) {
   fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
 }
 
-async function sendOrUpdateMessage(client, groupName, text) {
+function toDateKey(checkout) {
+  return checkout.date.toISOString().split('T')[0];
+}
+
+function toLabel(checkout) {
+  return checkout.date.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short' });
+}
+
+function buildChangeNotification(oldEntries, newCheckouts) {
+  const oldKeys = new Set(oldEntries.map((e) => e.date));
+  const newKeys = new Set(newCheckouts.map(toDateKey));
+
+  const added = newCheckouts.filter((c) => !oldKeys.has(toDateKey(c)));
+  const removed = oldEntries.filter((e) => !newKeys.has(e.date));
+
+  const lines = ['📋 *Cleaning schedule updated*'];
+  if (added.length) lines.push(`➕ Added: ${added.map(toLabel).join(' · ')}`);
+  if (removed.length) lines.push(`➖ Removed: ${removed.map((e) => e.label).join(' · ')}`);
+  return lines.join('\n');
+}
+
+async function sendOrUpdateMessage(client, groupName, text, checkouts) {
   const state = loadState();
+  const oldEntries = state.checkouts || [];
+  const newEntries = checkouts.map((c) => ({ date: toDateKey(c), label: toLabel(c) }));
+
+  const hasChanged =
+    oldEntries.length !== newEntries.length ||
+    oldEntries.some((e, i) => e.date !== newEntries[i]?.date);
 
   // Try to edit existing message
   if (state.messageId && state.chatId) {
@@ -27,8 +54,14 @@ async function sendOrUpdateMessage(client, groupName, text) {
       const existing = messages.find((m) => m.id._serialized === state.messageId);
 
       if (existing && existing.fromMe) {
+        if (!hasChanged) {
+          console.log('No changes in checkouts, skipping update.');
+          return;
+        }
         await existing.edit(text);
         console.log('Message edited successfully.');
+        await chat.sendMessage(buildChangeNotification(oldEntries, checkouts));
+        saveState({ ...state, checkouts: newEntries });
         return;
       }
     } catch (err) {
@@ -65,7 +98,7 @@ async function sendOrUpdateMessage(client, groupName, text) {
     console.warn('Could not pin message (bot may need admin rights):', err.message);
   }
 
-  saveState({ chatId: group.id._serialized, messageId: sent.id._serialized });
+  saveState({ chatId: group.id._serialized, messageId: sent.id._serialized, checkouts: newEntries });
   console.log('New message sent and ID saved.');
 }
 
