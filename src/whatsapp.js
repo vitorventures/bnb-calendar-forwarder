@@ -46,30 +46,12 @@ async function sendOrUpdateMessage(client, groupName, text, checkouts) {
     oldEntries.length !== newEntries.length ||
     oldEntries.some((e, i) => e.date !== newEntries[i]?.date);
 
-  // Try to edit existing message
-  if (state.messageId && state.chatId) {
-    try {
-      const chat = await client.getChatById(state.chatId);
-      const messages = await chat.fetchMessages({ limit: 100 });
-      const existing = messages.find((m) => m.id._serialized === state.messageId);
-
-      if (existing && existing.fromMe) {
-        if (!hasChanged) {
-          console.log('No changes in checkouts, skipping update.');
-          return;
-        }
-        await existing.edit(text);
-        console.log('Message edited successfully.');
-        await chat.sendMessage(buildChangeNotification(oldEntries, checkouts));
-        saveState({ ...state, checkouts: newEntries });
-        return;
-      }
-    } catch (err) {
-      console.warn('Could not edit stored message, will send new one:', err.message);
-    }
+  if (!hasChanged) {
+    console.log('No changes in checkouts, skipping update.');
+    return;
   }
 
-  // Find group and send new message
+  // Find group
   const chats = await client.getChats();
   const group = chats.find(
     (c) => c.isGroup && c.name.toLowerCase() === groupName.toLowerCase()
@@ -88,9 +70,9 @@ async function sendOrUpdateMessage(client, groupName, text, checkouts) {
     console.warn('Could not unpin existing messages:', err.message);
   }
 
+  // Send fresh schedule message and pin it
   const sent = await group.sendMessage(text);
 
-  // Pin new message for 30 days (requires bot to be group admin)
   try {
     await sent.pin(PIN_DURATION);
     console.log('Message pinned for 30 days.');
@@ -98,8 +80,13 @@ async function sendOrUpdateMessage(client, groupName, text, checkouts) {
     console.warn('Could not pin message (bot may need admin rights):', err.message);
   }
 
-  saveState({ chatId: group.id._serialized, messageId: sent.id._serialized, checkouts: newEntries });
-  console.log('New message sent and ID saved.');
+  // Send change notification (skip on first run when there's nothing to compare)
+  if (oldEntries.length > 0) {
+    await group.sendMessage(buildChangeNotification(oldEntries, checkouts));
+  }
+
+  saveState({ checkouts: newEntries });
+  console.log('New message sent and saved.');
 }
 
 module.exports = { sendOrUpdateMessage };
