@@ -1,6 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 
+function log(...args) {
+  console.log(new Date().toISOString(), ...args);
+}
+
+function logWarn(...args) {
+  console.warn(new Date().toISOString(), ...args);
+}
+
 const STATE_FILE = path.join(__dirname, '..', 'state.json');
 const PIN_DURATION = 2592000; // 30 days in seconds
 
@@ -47,7 +55,7 @@ async function sendOrUpdateMessage(client, groupName, text, checkouts) {
     oldEntries.some((e, i) => e.date !== newEntries[i]?.date);
 
   if (!hasChanged) {
-    console.log('No changes in checkouts, skipping update.');
+    log('No changes in checkouts, skipping update.');
     return;
   }
 
@@ -65,9 +73,9 @@ async function sendOrUpdateMessage(client, groupName, text, checkouts) {
   try {
     const pinned = await client.getPinnedMessages(group.id._serialized);
     await Promise.all(pinned.map((m) => m.unpin().catch(() => {})));
-    if (pinned.length) console.log(`Unpinned ${pinned.length} existing message(s).`);
+    if (pinned.length) log(`Unpinned ${pinned.length} existing message(s).`);
   } catch (err) {
-    console.warn('Could not unpin existing messages:', err.message);
+    logWarn('Could not unpin existing messages:', err.message);
   }
 
   // Send fresh schedule message and pin it
@@ -75,9 +83,9 @@ async function sendOrUpdateMessage(client, groupName, text, checkouts) {
 
   try {
     await sent.pin(PIN_DURATION);
-    console.log('Message pinned for 30 days.');
+    log('Message pinned for 30 days.');
   } catch (err) {
-    console.warn('Could not pin message (bot may need admin rights):', err.message);
+    logWarn('Could not pin message (bot may need admin rights):', err.message);
   }
 
   // Send change notification (skip on first run when there's nothing to compare)
@@ -86,7 +94,7 @@ async function sendOrUpdateMessage(client, groupName, text, checkouts) {
   }
 
   saveState({ checkouts: newEntries });
-  console.log('New message sent and saved.');
+  log('New message sent and saved.');
 }
 
 module.exports = { sendOrUpdateMessage };
