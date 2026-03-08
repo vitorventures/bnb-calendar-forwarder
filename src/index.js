@@ -12,7 +12,7 @@ const {
   ICAL_URL,
   WHATSAPP_GROUP_NAME,
   CRON_SCHEDULE = '0 8 * * *',
-  LOOKAHEAD_DAYS = '365',
+  LOOKAHEAD_DAYS = '60',
 } = process.env;
 
 function log(...args) {
